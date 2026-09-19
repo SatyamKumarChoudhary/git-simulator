@@ -1,26 +1,159 @@
 @import "tailwindcss";
 
-:root {
-  --background: #ffffff;
-  --foreground: #171717;
-}
-
 @theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
+  --font-sans: var(--font-nunito), ui-rounded, system-ui, sans-serif;
+  --font-display: var(--font-fredoka), ui-rounded, system-ui, sans-serif;
+  --font-mono: var(--font-jetbrains), ui-monospace, SFMono-Regular, Menlo, monospace;
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
+@theme {
+  --color-night-950: #05060f;
+
+  --animate-blink: blink 1.1s step-end infinite;
+
+  @keyframes blink {
+    50% {
+      opacity: 0;
+    }
   }
 }
 
+/*
+ * Appearance tokens. Light is the default; [data-theme="dark"] on <html> switches.
+ * Components use the semantic colours below (bg-surface, text-ink, border-line…).
+ */
+:root {
+  color-scheme: light;
+  --c-page: #f4f6fb;
+  --c-surface: #ffffff;
+  --c-surface-2: #f3f5fa;
+  --c-surface-3: #e9edf5;
+  --c-line: #e2e6ef;
+  --c-line-strong: #cbd2df;
+  --c-ink: #0f172a;
+  --c-ink-2: #334155;
+  --c-ink-3: #5b6678;
+  --c-ink-4: #8a94a6;
+  /* The animation board: a soft white-grey that is easy on the eyes, so pure-white cards pop. */
+  --c-canvas: #eceff4;
+  --c-canvas-dot: rgb(15 23 42 / 0.13);
+  --c-node: #ffffff;
+  --c-node-border: #c4ccd9;
+  --c-edge: #5d6a80;
+  --c-edge-faded: #a9b2c1;
+  --c-overlay: rgb(15 23 42 / 0.35);
+  --c-shadow: 0 1px 2px rgb(15 23 42 / 0.05), 0 8px 24px -12px rgb(15 23 42 / 0.18);
+  --c-node-shadow: 0 1px 2px rgb(15 23 42 / 0.1), 0 3px 8px -2px rgb(15 23 42 / 0.08), 0 14px 26px -16px rgb(15 23 42 / 0.45);
+}
+
+[data-theme="dark"] {
+  color-scheme: dark;
+  --c-page: #05060f;
+  --c-surface: #0e101c;
+  --c-surface-2: rgb(255 255 255 / 0.04);
+  --c-surface-3: rgb(255 255 255 / 0.08);
+  --c-line: rgb(255 255 255 / 0.08);
+  --c-line-strong: rgb(255 255 255 / 0.16);
+  --c-ink: #f1f5f9;
+  --c-ink-2: #cbd5e1;
+  --c-ink-3: #94a3b8;
+  --c-ink-4: #64748b;
+  --c-canvas: #0a0c16;
+  --c-canvas-dot: rgb(255 255 255 / 0.05);
+  --c-node: #131729;
+  --c-node-border: #2b3148;
+  --c-edge: #7c8699;
+  --c-edge-faded: #3f4758;
+  --c-overlay: rgb(5 6 15 / 0.7);
+  --c-shadow: none;
+  --c-node-shadow: 0 10px 24px -14px rgb(0 0 0 / 0.9);
+}
+
+@theme inline {
+  --color-page: var(--c-page);
+  --color-surface: var(--c-surface);
+  --color-surface-2: var(--c-surface-2);
+  --color-surface-3: var(--c-surface-3);
+  --color-line: var(--c-line);
+  --color-line-strong: var(--c-line-strong);
+  --color-ink: var(--c-ink);
+  --color-ink-2: var(--c-ink-2);
+  --color-ink-3: var(--c-ink-3);
+  --color-ink-4: var(--c-ink-4);
+  --color-canvas: var(--c-canvas);
+  --color-overlay: var(--c-overlay);
+}
+
+@custom-variant dark (&:where([data-theme="dark"], [data-theme="dark"] *));
+
+html,
 body {
-  background: var(--background);
-  color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+  background: var(--c-page);
+  color: var(--c-ink);
+}
+
+body {
+  font-family: var(--font-sans);
+}
+
+::selection {
+  background: rgb(167 139 250 / 0.35);
+}
+
+/* The map page in the dark: a neutral charcoal rather than near-black, with surfaces lifted so cards still stand out. */
+[data-theme="dark"] .map-page {
+  --c-page: #17191e;
+  --c-surface: #22252c;
+  --c-surface-2: rgb(255 255 255 / 0.05);
+  --c-surface-3: rgb(255 255 255 / 0.09);
+  --c-line: rgb(255 255 255 / 0.09);
+  --c-line-strong: rgb(255 255 255 / 0.18);
+}
+
+/* Soft colour wash behind every page. */
+.app-backdrop {
+  background:
+    radial-gradient(60rem 40rem at 10% -10%, rgb(124 58 237 / 0.06), transparent 60%),
+    radial-gradient(50rem 40rem at 110% 10%, rgb(14 165 233 / 0.05), transparent 60%),
+    var(--c-page);
+}
+
+.dot-grid {
+  background-image: radial-gradient(var(--c-canvas-dot) 1px, transparent 1px);
+  background-size: 22px 22px;
+}
+
+.panel {
+  background: var(--c-surface);
+  border: 1px solid var(--c-line);
+  box-shadow: var(--c-shadow);
+}
+
+.thin-scroll {
+  scrollbar-width: thin;
+  scrollbar-color: var(--c-line-strong) transparent;
+}
+.thin-scroll::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+.thin-scroll::-webkit-scrollbar-thumb {
+  background: var(--c-line-strong);
+  border-radius: 999px;
+}
+
+.text-gradient {
+  background: linear-gradient(90deg, #34d399, #38bdf8 35%, #a78bfa 65%, #f472b6);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+  }
 }
