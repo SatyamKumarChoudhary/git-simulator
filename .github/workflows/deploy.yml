@@ -9,6 +9,13 @@ concurrency:
   group: deploy
   cancel-in-progress: true
 
+# The host and the login name are not secrets: the IP is whatever playcommands.com resolves to, and "ubuntu" is
+# the login on every Ubuntu AMI. Keeping them here rather than in encrypted secrets makes a failed deploy legible —
+# the log names the host it could not reach instead of printing ***. Only the private key is a real secret.
+env:
+  DEPLOY_HOST: 13.232.72.89
+  DEPLOY_USER: ubuntu
+
 jobs:
   deploy:
     runs-on: ubuntu-latest
@@ -33,17 +40,18 @@ jobs:
           chmod 700 ~/.ssh
           printf '%s\n' "$DEPLOY_KEY" > ~/.ssh/deploy_key
           chmod 600 ~/.ssh/deploy_key
-          ssh-keyscan -H "$HOST" >> ~/.ssh/known_hosts
+          # An empty secret would otherwise fail several steps later as a confusing SSH error.
+          if [ ! -s ~/.ssh/deploy_key ]; then
+            echo "::error::EC2_SSH_KEY is empty — set it in Settings → Secrets and variables → Actions."
+            exit 1
+          fi
+          ssh-keyscan -H "$DEPLOY_HOST" >> ~/.ssh/known_hosts
         env:
           DEPLOY_KEY: ${{ secrets.EC2_SSH_KEY }}
-          HOST: ${{ secrets.EC2_HOST }}
 
       # --delete removes files the build no longer produces, so an old level page can't linger.
       - name: Upload the build
-        run: rsync -az --delete -e "ssh -i ~/.ssh/deploy_key" out/ "$USER_NAME@$HOST:/var/www/gitquest/"
-        env:
-          HOST: ${{ secrets.EC2_HOST }}
-          USER_NAME: ${{ secrets.EC2_USER }}
+        run: rsync -az --delete -e "ssh -i ~/.ssh/deploy_key" out/ "$DEPLOY_USER@$DEPLOY_HOST:/var/www/gitquest/"
 
       - name: Remove the key
         if: always()
