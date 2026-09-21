@@ -1,0 +1,50 @@
+name: Deploy
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+concurrency:
+  group: deploy
+  cancel-in-progress: true
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+
+      - run: npm ci
+
+      # A broken build must never reach readers, so the suite gates the deploy.
+      - run: npm test
+
+      - run: npm run build
+
+      - name: Add the server to known_hosts
+        run: |
+          mkdir -p ~/.ssh
+          chmod 700 ~/.ssh
+          printf '%s\n' "$DEPLOY_KEY" > ~/.ssh/deploy_key
+          chmod 600 ~/.ssh/deploy_key
+          ssh-keyscan -H "$HOST" >> ~/.ssh/known_hosts
+        env:
+          DEPLOY_KEY: ${{ secrets.EC2_SSH_KEY }}
+          HOST: ${{ secrets.EC2_HOST }}
+
+      # --delete removes files the build no longer produces, so an old level page can't linger.
+      - name: Upload the build
+        run: rsync -az --delete -e "ssh -i ~/.ssh/deploy_key" out/ "$USER_NAME@$HOST:/var/www/gitquest/"
+        env:
+          HOST: ${{ secrets.EC2_HOST }}
+          USER_NAME: ${{ secrets.EC2_USER }}
+
+      - name: Remove the key
+        if: always()
+        run: rm -f ~/.ssh/deploy_key
