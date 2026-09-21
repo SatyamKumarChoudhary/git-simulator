@@ -1,5 +1,5 @@
 import { goals } from "../goals";
-import type { WorldDefinition } from "../types";
+import { defineTopic } from "../registry";
 
 const URL = "https://github.com/team/website";
 const SHOP = "https://github.com/team/shop";
@@ -13,7 +13,7 @@ const cloned = [...hosted, `git clone ${URL}`];
 
 const serverTip = (state: { servers: Record<string, { branches: Record<string, string> }> }, branch = "main") => state.servers[URL]?.branches[branch];
 
-export const remotesWorld: WorldDefinition = {
+export const remotesTopic = defineTopic({
   id: "remotes",
   title: "Remote repository",
   emoji: "☁️",
@@ -219,4 +219,4 @@ export const remotesWorld: WorldDefinition = {
       xp: 85,
     },
   ],
-};
+});

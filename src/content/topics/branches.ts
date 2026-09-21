@@ -1,5 +1,5 @@
 import { goals } from "../goals";
-import type { WorldDefinition } from "../types";
+import { defineTopic } from "../registry";
 
 const siteWithHistory = [
   'echo "<h1>My Site</h1>" > index.html',
@@ -11,7 +11,7 @@ const siteWithHistory = [
   'git commit -am "Add footer"',
 ];
 
-export const branchesWorld: WorldDefinition = {
+export const branchesTopic = defineTopic({
   id: "branches",
   title: "Branches",
   emoji: "🌿",
@@ -266,4 +266,4 @@ export const branchesWorld: WorldDefinition = {
       xp: 60,
     },
   ],
-};
+});

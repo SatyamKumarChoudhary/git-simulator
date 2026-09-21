@@ -16,6 +16,7 @@ import {
 } from "@/engine";
 import { useCustomCommands } from "./custom-commands-store";
 import { useProgress } from "./progress-store";
+import { resumableSession, signatureOf, writeSession } from "./session-cache";
 
 export type Session = { kind: "level"; levelId: string } | { kind: "sandbox"; presetId: string };
 
@@ -83,6 +84,8 @@ export interface GameState {
 const BASE_FRAME_DELAY = 750;
 const QUIET_FRAME_DELAY = 260;
 const MAX_ENTRIES = 500;
+/** How long after the last change the session is written to the browser. Long enough to coalesce a burst of frames. */
+const SAVE_DELAY = 600;
 
 let entryIds = 0;
 const nextId = () => ++entryIds;
@@ -95,6 +98,41 @@ export function promptLabel(repo: RepoState): string {
 
 function introEntries(): TerminalEntry[] {
   return [{ id: nextId(), kind: "system", text: "Tab completes · ↑ history · help lists commands", tone: "muted" }];
+}
+
+/** The result a resumed level was already awarded, rebuilt from what the cache kept. */
+function earnedResult(level: LevelDefinition, saved: { moves: number; hintsShown: number; solutionShown: boolean }): CompletionResult {
+  const par = levelPar(level);
+  return {
+    stars: scoreStars(saved.moves, par, saved.hintsShown, saved.solutionShown),
+    xpEarned: 0,
+    xpAvailable: level.xp,
+    moves: saved.moves,
+    par,
+    hintsUsed: saved.hintsShown,
+  };
+}
+
+/** The fields a cache restores. Everything else — playback, the draft, the result dialog — starts clean. */
+function resumedState(session: Session, level: LevelDefinition | null, fresh: ReturnType<typeof freshState>) {
+  const saved = resumableSession(session, level);
+  if (!saved) return fresh;
+  // Terminal entry ids have to stay ahead of the restored ones, or React would see two entries with the same key.
+  entryIds = Math.max(entryIds, ...saved.entries.map((entry) => entry.id), 0);
+  return {
+    ...fresh,
+    // A level finished before the reload has already been celebrated and already counted: rebuilding its result keeps
+    // the next command from throwing the same party twice.
+    result: level && saved.achieved.length === level.goals.length ? earnedResult(level, saved) : null,
+    repo: saved.repo,
+    initialRepo: saved.initialRepo,
+    entries: saved.entries,
+    commands: saved.commands,
+    achieved: saved.achieved,
+    moves: saved.moves,
+    hintsShown: saved.hintsShown,
+    solutionShown: saved.solutionShown,
+  };
 }
 
 function freshState(session: Session) {
@@ -134,14 +172,58 @@ export function scoreStars(moves: number, par: number, hintsUsed: number, soluti
   return Math.max(1, stars);
 }
 
+/**
+ * Keeps the browser's copy of the session up to date. Playback sets state many times a second, so writes are coalesced
+ * and only the last one lands — with a flush when the page goes away, which is exactly when it matters most.
+ */
+function attachSessionCache(store: StoreApi<GameState>): () => void {
+  if (typeof window === "undefined") return () => {};
+  let timer: ReturnType<typeof setTimeout> | null = null;
+
+  const save = () => {
+    timer = null;
+    const s = store.getState();
+    writeSession({
+      session: s.session,
+      signature: signatureOf(s.session, s.level),
+      repo: s.repo,
+      initialRepo: s.initialRepo,
+      entries: s.entries,
+      inputHistory: s.inputHistory,
+      commands: s.commands,
+      achieved: s.achieved,
+      moves: s.moves,
+      hintsShown: s.hintsShown,
+      solutionShown: s.solutionShown,
+    });
+  };
+  const schedule = () => {
+    if (timer === null) timer = setTimeout(save, SAVE_DELAY);
+  };
+  const flush = () => {
+    if (timer === null) return;
+    clearTimeout(timer);
+    save();
+  };
+
+  const unsubscribe = store.subscribe(schedule);
+  window.addEventListener("pagehide", flush);
+  return () => {
+    unsubscribe();
+    window.removeEventListener("pagehide", flush);
+    flush();
+  };
+}
+
 export function createGameStore(session: Session): StoreApi<GameState> {
   let timer: ReturnType<typeof setTimeout> | null = null;
   const clearTimer = () => {
     if (timer) clearTimeout(timer);
     timer = null;
   };
+  let detachCache = () => {};
 
-  return createStore<GameState>()((set, get) => {
+  const store = createStore<GameState>()((set, get) => {
     const pushEntries = (entries: TerminalEntry[], added: TerminalEntry[]) => {
       const next = [...entries, ...added];
       return next.length > MAX_ENTRIES ? next.slice(next.length - MAX_ENTRIES) : next;
@@ -222,9 +304,11 @@ export function createGameStore(session: Session): StoreApi<GameState> {
       timer = setTimeout(() => play(frames, index + 1, before), delay);
     };
 
+    const fresh = freshState(session);
+    const saved = resumableSession(session, fresh.level);
     return {
-      ...freshState(session),
-      inputHistory: [],
+      ...resumedState(session, fresh.level, fresh),
+      inputHistory: saved?.inputHistory ?? [],
       draft: "",
       focusRequest: 0,
       speed: 1,
@@ -279,9 +363,15 @@ export function createGameStore(session: Session): StoreApi<GameState> {
 
       closeResult: () => set((s) => ({ resultOpen: false, focusRequest: s.focusRequest + 1 })),
 
-      dispose: clearTimer,
+      dispose: () => {
+        clearTimer();
+        detachCache();
+      },
     };
   });
+
+  detachCache = attachSessionCache(store);
+  return store;
 }
 
 export const GameStoreContext = createContext<StoreApi<GameState> | null>(null);

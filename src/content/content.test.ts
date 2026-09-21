@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { engine } from "@/engine";
-import { levelEntries, levelPar, levelSolution, levelStartState, sandboxPresets, worlds } from "./index";
+import { curriculum, curriculumProblems, levelEntries, levelPar, levelSolution, levelStartState, sandboxPresets } from "./index";
 
 describe("levels", () => {
   it("cover every unit with a gentle ramp", () => {
@@ -12,15 +12,9 @@ describe("levels", () => {
     expect(new Set(ids).size).toBe(ids.length);
   });
 
-  it("teaches each unit as learn → practice → checkpoint", () => {
-    for (const world of worlds) {
-      const phases = world.levels.map((level) => level.phase ?? "learn");
-      // Every unit starts by teaching, practises what it taught, and ends with a mixed checkpoint.
-      expect(phases[0], world.title).toBe("learn");
-      expect(phases.filter((phase) => phase === "practice").length, world.title).toBeGreaterThanOrEqual(1);
-      expect(phases.at(-1), world.title).toBe("checkpoint");
-      expect(phases.filter((phase) => phase === "checkpoint").length, world.title).toBe(1);
-    }
+  it("teaches each topic as learn → practice → checkpoint", () => {
+    // The registry owns these rules so the app and the tests can never disagree about them.
+    expect(curriculumProblems(curriculum)).toEqual([]);
   });
 
   /**
@@ -66,7 +60,7 @@ describe("levels", () => {
     }
   });
 
-  for (const { level, world } of levelEntries) {
+  for (const { level, topic: world } of levelEntries) {
     describe(`${world.title} › ${level.title}`, () => {
       it("is played with git commands only — no file editing", () => {
         expect(levelSolution(level).filter((command) => !command.startsWith("git "))).toEqual([]);

@@ -1,57 +1,39 @@
 import { type RepoState, engine, resolveRevision, shortId, statesEqual } from "@/engine";
-import type { LevelDefinition, SandboxPreset, WorldDefinition } from "./types";
-import { branchesWorld } from "./worlds/branches";
-import { everydayWorld } from "./worlds/everyday";
-import { gettingStartedWorld } from "./worlds/getting-started";
-import { mergingWorld } from "./worlds/merging";
-import { remotesWorld } from "./worlds/remotes";
-import { rewriteWorld } from "./worlds/rewrite";
-import { tagsStashWorld } from "./worlds/tags-stash";
-import { teamworkWorld } from "./worlds/teamwork";
-import { undoWorld } from "./worlds/undo";
+import { type Curriculum, type LevelEntry, buildCurriculum, placeTopics } from "./registry";
+import { topicInserts, topicsInOrder } from "./topics";
+import type { LevelDefinition, TopicDefinition } from "./types";
 
 /**
- * Units in play order — each level teaches one new idea, so difficulty climbs gently.
- * Add a unit by creating a module in ./worlds and listing it here.
+ * The assembled curriculum. Everything about order and numbering is derived here, so inserting a question or a
+ * topic anywhere in the lists is all it takes — see documentation/adding-content.md.
  */
-export const worlds: readonly WorldDefinition[] = [
-  gettingStartedWorld,
-  everydayWorld,
-  remotesWorld,
-  branchesWorld,
-  mergingWorld,
-  undoWorld,
-  tagsStashWorld,
-  rewriteWorld,
-  teamworkWorld,
-];
+export const curriculum: Curriculum = buildCurriculum(placeTopics(topicsInOrder, topicInserts));
 
-export interface LevelEntry {
-  level: LevelDefinition;
-  world: WorldDefinition;
-  /** Position across all worlds (0-based). */
-  index: number;
-  /** Position within its world (1-based). */
-  number: number;
-}
+/** Topics in play order, each with its own map. */
+export const topics: readonly TopicDefinition[] = curriculum.topics;
 
-export const levelEntries: readonly LevelEntry[] = worlds.flatMap((world) =>
-  world.levels.map((level, i) => ({ level, world, number: i + 1, index: 0 })),
-).map((entry, index) => ({ ...entry, index }));
+/** Every question in play order, numbered globally and within its topic. */
+export const levelEntries: readonly LevelEntry[] = curriculum.levels;
 
 export function findLevel(id: string): LevelEntry | undefined {
-  return levelEntries.find((entry) => entry.level.id === id);
+  return curriculum.find(id);
 }
 
 export function nextLevel(id: string): LevelEntry | undefined {
-  const entry = findLevel(id);
-  return entry ? levelEntries[entry.index + 1] : undefined;
+  return curriculum.next(id);
 }
 
 export function previousLevel(id: string): LevelEntry | undefined {
-  const entry = findLevel(id);
-  return entry && entry.index > 0 ? levelEntries[entry.index - 1] : undefined;
+  return curriculum.previous(id);
 }
+
+/** The questions of one topic, in order — a topic's own map. */
+export function topicLevels(topicId: string): readonly LevelEntry[] {
+  return curriculum.levelsOf(topicId);
+}
+
+/** Older name for `topics`, kept so existing imports keep working. */
+export const worlds: readonly TopicDefinition[] = curriculum.topics;
 
 const startStates = new Map<string, RepoState>();
 
@@ -105,84 +87,33 @@ export function levelGoalState(level: LevelDefinition): RepoState {
   return solve(level).goal;
 }
 
-export const sandboxPresets: readonly SandboxPreset[] = [
-  {
-    id: "fresh-project",
-    title: "Fresh project",
-    emoji: "🌱",
-    description: "A few files that aren't in Git yet.",
-    setup: ['echo "# My Project" > README.md', 'echo "<h1>Hi</h1>" > index.html', 'echo "body { margin: 0; }" > style.css'],
-  },
-  {
-    id: "history",
-    title: "Some history",
-    emoji: "📚",
-    description: "A repository with a few commits on main.",
-    setup: [
-      'echo "# My Project" > README.md',
-      "git init",
-      "git add .",
-      'git commit -m "Initial commit"',
-      'echo "<h1>Hi</h1>" > index.html',
-      "git add .",
-      'git commit -m "Add homepage"',
-      'echo "body { margin: 0; }" > style.css',
-      "git add .",
-      'git commit -m "Add styles"',
-    ],
-  },
-  {
-    id: "diverged",
-    title: "Diverged branches",
-    emoji: "🌿",
-    description: "main and feature both have new commits. Try merge vs rebase!",
-    setup: [
-      'echo "# My Project" > README.md',
-      "git init",
-      "git add .",
-      'git commit -m "Initial commit"',
-      "git switch -c feature",
-      'echo "login()" > login.js',
-      "git add .",
-      'git commit -m "Add login"',
-      'edit login.js "logout()"',
-      'git commit -am "Add logout"',
-      "git switch main",
-      'echo "<h1>Docs</h1>" > docs.html',
-      "git add .",
-      'git commit -m "Add docs"',
-    ],
-  },
-  {
-    id: "team-project",
-    title: "Team project",
-    emoji: "☁️",
-    description: "A cloned GitHub repo. Try server commit to play a teammate, then fetch, pull and push.",
-    setup: [
-      "server create https://github.com/team/project",
-      'server commit https://github.com/team/project "Initial commit" --file README.md --content "# Project"',
-      'server commit https://github.com/team/project "Add homepage" --file index.html --content "<h1>Hi</h1>"',
-      "git clone https://github.com/team/project",
-    ],
-  },
-  {
-    id: "conflict",
-    title: "Conflict waiting to happen",
-    emoji: "💥",
-    description: "Both branches edited the same line. Run git merge feature.",
-    setup: [
-      'echo "color = blue" > config.txt',
-      "git init",
-      "git add .",
-      'git commit -m "Initial config"',
-      "git switch -c feature",
-      'echo "color = green" > config.txt',
-      'git commit -am "Go green"',
-      "git switch main",
-      'echo "color = red" > config.txt',
-      'git commit -am "Go red"',
-    ],
-  },
-];
-
-export type { GoalContext, Goal, LevelDefinition, LevelPhase, WorldDefinition, SandboxPreset, WorldTheme } from "./types";
+export { sandboxPresets } from "./sandbox-presets";
+export {
+  ContentError,
+  buildCurriculum,
+  curriculumProblems,
+  defineLevel,
+  defineTopic,
+  phaseOf,
+  placeLevels,
+  placeTopics,
+  type Curriculum,
+  type Insert,
+  type LevelEntry,
+  type LevelInsert,
+  type Placement,
+  type TopicInsert,
+} from "./registry";
+export type {
+  GoalContext,
+  Goal,
+  LevelDefinition,
+  LevelPhase,
+  SandboxPreset,
+  TopicDefinition,
+  TopicInput,
+  TopicTheme,
+  // Older names, still exported so existing imports keep working.
+  WorldDefinition,
+  WorldTheme,
+} from "./types";

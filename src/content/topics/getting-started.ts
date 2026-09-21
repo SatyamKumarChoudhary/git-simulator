@@ -1,10 +1,10 @@
 import { tryResolveRevision } from "@/engine";
 import { goals } from "../goals";
-import type { WorldDefinition } from "../types";
+import { defineTopic } from "../registry";
 
 const site = ['echo "<h1>My Site</h1>" > index.html', 'echo "h1 { color: hotpink; }" > style.css'];
 
-export const gettingStartedWorld: WorldDefinition = {
+export const gettingStartedTopic = defineTopic({
   id: "getting-started",
   title: "Git basics",
   emoji: "🌱",
@@ -231,4 +231,4 @@ export const gettingStartedWorld: WorldDefinition = {
       xp: 50,
     },
   ],
-};
+});

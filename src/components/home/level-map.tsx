@@ -4,7 +4,7 @@ import { Check, Lock, Star, Trophy } from "lucide-react";
 import { AnimatePresence, motion } from "motion/react";
 import Link from "next/link";
 import { type ReactNode, useEffect, useRef, useState } from "react";
-import { type LevelEntry, type WorldDefinition, levelEntries, worlds } from "@/content";
+import { type LevelEntry, type TopicDefinition, levelEntries, topicLevels, topics } from "@/content";
 import { completedCount, currentEntry, isUnlocked } from "@/lib/progression";
 import { worldTheme } from "@/lib/theme";
 import { useHydrated } from "@/lib/use-hydrated";
@@ -54,7 +54,7 @@ export function LevelMap() {
 
   return (
     <div className="mx-auto w-full max-w-3xl">
-      {worlds.map((world, unitIndex) => (
+      {topics.map((world, unitIndex) => (
         <Unit key={world.id} world={world} number={unitIndex + 1} progress={progress} currentId={current.level.id} />
       ))}
 
@@ -73,8 +73,8 @@ function roadSegment(from: { x: number; y: number }, to: { x: number; y: number 
   return `M ${from.x} ${from.y} C ${bulge} ${from.y}, ${bulge} ${to.y}, ${to.x} ${to.y}`;
 }
 
-function Unit({ world, number, progress, currentId }: { world: WorldDefinition; number: number; progress: Record<string, LevelRecord>; currentId: string }) {
-  const entries = levelEntries.filter((entry) => entry.world.id === world.id);
+function Unit({ world, number, progress, currentId }: { world: TopicDefinition; number: number; progress: Record<string, LevelRecord>; currentId: string }) {
+  const entries = topicLevels(world.id).map((entry) => entry);
   const color = worldTheme[world.theme].hex;
   const unlocked = isUnlocked(entries[0].level.id, progress);
   const done = entries.filter((entry) => progress[entry.level.id]).length;
@@ -140,7 +140,7 @@ function Unit({ world, number, progress, currentId }: { world: WorldDefinition; 
 }
 
 /** A raised, colourful banner per unit, with how far you've got. */
-function UnitBanner({ world, number, unlocked, done, total, color }: { world: WorldDefinition; number: number; unlocked: boolean; done: number; total: number; color: string }) {
+function UnitBanner({ world, number, unlocked, done, total, color }: { world: TopicDefinition; number: number; unlocked: boolean; done: number; total: number; color: string }) {
   return (
     <motion.div
       initial={{ opacity: 0, y: 16 }}

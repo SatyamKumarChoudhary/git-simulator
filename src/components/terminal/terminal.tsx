@@ -86,15 +86,40 @@ export function Terminal({ className }: { className?: string }) {
   const restart = useGame((s) => s.restart);
   const customCommands = useCustomCommands((s) => s.commands);
 
-  const inputRef = useRef<HTMLInputElement>(null);
+  const inputRef = useRef<HTMLTextAreaElement>(null);
   const scrollRef = useRef<HTMLDivElement>(null);
+  const promptRef = useRef<HTMLSpanElement>(null);
   const [historyIndex, setHistoryIndex] = useState<number | null>(null);
   const [candidates, setCandidates] = useState<string[]>([]);
+  const [promptWidth, setPromptWidth] = useState(0);
+  const [width, setWidth] = useState(0);
+
+  // The prompt is measured, not guessed: the branch name in it changes, and so does the font once it loads.
+  useLayoutEffect(() => {
+    const el = promptRef.current;
+    const box = scrollRef.current;
+    if (!el || !box) return;
+    const observer = new ResizeObserver(() => {
+      setPromptWidth(el.getBoundingClientRect().width);
+      setWidth(box.clientWidth);
+    });
+    observer.observe(el);
+    observer.observe(box);
+    return () => observer.disconnect();
+  }, []);
+
+  // One line until the command outgrows it, then as many as it needs.
+  useLayoutEffect(() => {
+    const el = inputRef.current;
+    if (!el) return;
+    el.style.height = "0px";
+    el.style.height = `${el.scrollHeight}px`;
+  }, [draft, promptWidth, width]);
 
   useLayoutEffect(() => {
     const el = scrollRef.current;
     if (el) el.scrollTop = el.scrollHeight;
-  }, [entries, candidates]);
+  }, [entries, candidates, draft, playing]);
 
   useEffect(() => {
     const input = inputRef.current;
@@ -115,7 +140,10 @@ export function Terminal({ className }: { className?: string }) {
     return completion.candidates.length === 1 && completion.completed.startsWith(draft) ? completion.completed.slice(draft.length).trimEnd() : "";
   }, [draft, repo, customCommands]);
 
-  const onKeyDown = (event: KeyboardEvent<HTMLInputElement>) => {
+  /** Only the very first line carries a hint; after that the prompt is bare, the way a real shell is. */
+  const hint = inputHistory.length === 0 && !playing ? "type a command…" : "";
+
+  const onKeyDown = (event: KeyboardEvent<HTMLTextAreaElement>) => {
     if (event.key === "Enter") {
       event.preventDefault();
       if (playing) return;
@@ -196,7 +224,7 @@ export function Terminal({ className }: { className?: string }) {
         </button>
       </header>
 
-      <div ref={scrollRef} className="thin-scroll min-h-0 flex-1 overflow-y-auto px-4 py-3 font-mono text-[13.5px] leading-[1.65]">
+      <div ref={scrollRef} className="thin-scroll min-h-0 flex-1 overflow-y-auto px-4 pb-4 pt-3 font-mono text-[13.5px] leading-[1.65]">
         {entries.map((entry) => (
           <Entry key={entry.id} entry={entry} />
         ))}
@@ -207,42 +235,46 @@ export function Terminal({ className }: { className?: string }) {
             ))}
           </div>
         )}
-      </div>
 
-      <div className="border-t border-[#1a2136] bg-[#090d19] px-3 py-2.5">
-        <div className="flex items-center gap-2 rounded-xl border border-[#27304a] bg-[#111829] px-3 py-2.5 font-mono transition-colors focus-within:border-violet-400/70 focus-within:shadow-[0_0_0_3px_rgb(167_139_250_/_0.15)]">
-          <span className="shrink-0 select-none text-[13px] text-violet-300">{promptLabel(repo) ? `(${promptLabel(repo)})` : "~"}</span>
-          <span className="shrink-0 select-none text-[15px] font-bold text-emerald-300">$</span>
-          <div className="relative min-w-0 flex-1">
-            <input
-              ref={inputRef}
-              value={draft}
-              onChange={(event) => {
-                setDraft(event.target.value);
-                setCandidates([]);
-              }}
-              onKeyDown={onKeyDown}
-              disabled={playing}
-              spellCheck={false}
-              autoCapitalize="off"
-              autoComplete="off"
-              autoCorrect="off"
-              aria-label="Terminal input"
-              className="relative z-10 w-full bg-transparent text-[15px] text-white caret-amber-300 outline-none placeholder:text-slate-500 disabled:opacity-60"
-              placeholder={playing ? "running…" : "Type a git command…"}
-            />
-            {ghost && (
-              <div className="pointer-events-none absolute inset-0 overflow-hidden whitespace-pre text-[15px] text-slate-500">
-                <span className="invisible">{draft}</span>
-                {ghost}
-              </div>
-            )}
-          </div>
-          {playing ? (
-            <Loader2 className="size-4 shrink-0 animate-spin text-violet-300" />
-          ) : (
-            draft && <kbd className="shrink-0 rounded-md border border-[#2d3650] px-1.5 py-0.5 text-[10px] text-slate-400">Enter ↵</kbd>
+        {/*
+          The live prompt sits in the stream, exactly where the next line of a real terminal would be. The prompt is
+          drawn over the first line and the text is indented past it, so a command too long for one line wraps to the
+          full width below — the way a real terminal wraps — instead of scrolling its beginning out of sight.
+        */}
+        <div className={cn("relative mt-3", playing && "opacity-40")}>
+          <span ref={promptRef} className="pointer-events-none absolute left-0 top-0">
+            <Prompt branch={promptLabel(repo)} />
+          </span>
+          <textarea
+            ref={inputRef}
+            rows={1}
+            value={draft}
+            onChange={(event) => {
+              setDraft(event.target.value);
+              setCandidates([]);
+            }}
+            onKeyDown={onKeyDown}
+            disabled={playing}
+            spellCheck={false}
+            autoCapitalize="off"
+            autoComplete="off"
+            autoCorrect="off"
+            aria-label="Terminal input"
+            style={{ textIndent: promptWidth }}
+            className="block w-full resize-none overflow-hidden break-all bg-transparent p-0 font-mono text-[13.5px] font-semibold leading-[1.65] text-white caret-emerald-300 outline-none placeholder:font-normal placeholder:text-slate-600 disabled:opacity-70"
+            placeholder={hint}
+          />
+          {ghost && (
+            <span
+              aria-hidden
+              style={{ textIndent: promptWidth }}
+              className="pointer-events-none absolute inset-0 whitespace-pre-wrap break-all font-semibold text-slate-600"
+            >
+              <span className="invisible">{draft}</span>
+              {ghost}
+            </span>
           )}
+          {playing && <Loader2 className="absolute right-0 top-1 size-3.5 animate-spin text-violet-300" />}
         </div>
       </div>
 

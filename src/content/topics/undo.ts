@@ -1,10 +1,10 @@
 import { computeStatus, headTree } from "@/engine";
 import { goals } from "../goals";
-import type { WorldDefinition } from "../types";
+import { defineTopic } from "../registry";
 
 const initial = ['echo "# Shop" > README.md', "git init", "git add .", 'git commit -m "Initial commit"'];
 
-export const undoWorld: WorldDefinition = {
+export const undoTopic = defineTopic({
   id: "undo",
   title: "Rollback",
   emoji: "⏪",
@@ -457,4 +457,4 @@ export const undoWorld: WorldDefinition = {
       xp: 80,
     },
   ],
-};
+});

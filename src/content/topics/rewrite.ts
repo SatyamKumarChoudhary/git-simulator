@@ -1,10 +1,10 @@
 import { headTree } from "@/engine";
 import { goals } from "../goals";
-import type { WorldDefinition } from "../types";
+import { defineTopic } from "../registry";
 
 const shop = ['echo "# Shop" > README.md', "git init", "git add .", 'git commit -m "Initial commit"'];
 
-export const rewriteWorld: WorldDefinition = {
+export const rewriteTopic = defineTopic({
   id: "rewrite",
   title: "Rewrite history",
   emoji: "✨",
@@ -266,4 +266,4 @@ export const rewriteWorld: WorldDefinition = {
       xp: 95,
     },
   ],
-};
+});

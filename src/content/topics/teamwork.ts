@@ -1,5 +1,5 @@
 import { goals } from "../goals";
-import type { WorldDefinition } from "../types";
+import { defineTopic } from "../registry";
 
 const URL = "https://github.com/team/website";
 
@@ -12,7 +12,7 @@ const cloned = [...hosted, `git clone ${URL}`];
 
 const serverTip = (state: { servers: Record<string, { branches: Record<string, string> }> }, branch = "main") => state.servers[URL]?.branches[branch];
 
-export const teamworkWorld: WorldDefinition = {
+export const teamworkTopic = defineTopic({
   id: "teamwork",
   title: "Working with a team",
   emoji: "🤝",
@@ -200,4 +200,4 @@ export const teamworkWorld: WorldDefinition = {
       xp: 90,
     },
   ],
-};
+});

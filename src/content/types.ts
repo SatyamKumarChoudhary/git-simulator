@@ -40,16 +40,29 @@ export interface LevelDefinition {
   xp: number;
 }
 
-export type WorldTheme = "emerald" | "sky" | "violet" | "pink" | "amber" | "cyan" | "fuchsia" | "indigo";
+/** Colour family a topic uses on the map and in its banner. */
+export type TopicTheme = "emerald" | "sky" | "violet" | "pink" | "amber" | "cyan" | "fuchsia" | "indigo";
 
-export interface WorldDefinition {
+/** A topic: one subject, its own map, its own list of questions in the order players meet them. */
+export interface TopicDefinition {
   id: string;
   title: string;
   emoji: string;
   tagline: string;
-  theme: WorldTheme;
+  theme: TopicTheme;
   levels: LevelDefinition[];
 }
+
+/** What you hand to defineTopic: the same thing, plus optional inserts that place questions at a position. */
+export interface TopicInput extends Omit<TopicDefinition, "levels"> {
+  levels: LevelDefinition[];
+  /** Questions added at a position without editing `levels`, e.g. `{ item: level, place: { after: "git-init" } }`. */
+  inserts?: ReadonlyArray<{ item: LevelDefinition; place: { at: "start" | "end" | number } | { after: string } | { before: string } }>;
+}
+
+/** Older names, kept so existing imports keep working. */
+export type WorldTheme = TopicTheme;
+export type WorldDefinition = TopicDefinition;
 
 export interface SandboxPreset {
   id: string;

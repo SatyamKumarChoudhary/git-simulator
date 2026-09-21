@@ -1,9 +1,9 @@
 import { goals } from "../goals";
-import type { WorldDefinition } from "../types";
+import { defineTopic } from "../registry";
 
 const initial = ['echo "# Shop" > README.md', "git init", "git add .", 'git commit -m "Initial commit"'];
 
-export const tagsStashWorld: WorldDefinition = {
+export const tagsStashTopic = defineTopic({
   id: "tags-stash",
   title: "Tags & stash",
   emoji: "🏷️",
@@ -255,4 +255,4 @@ export const tagsStashWorld: WorldDefinition = {
       xp: 80,
     },
   ],
-};
+});

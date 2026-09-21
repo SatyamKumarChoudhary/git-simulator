@@ -65,12 +65,24 @@ export function LevelCompleteDialog() {
     return () => clearTimeout(timer);
   }, [open, muted]);
 
+  useEffect(() => {
+    if (!open) return;
+    const onKey = (event: KeyboardEvent) => {
+      if (event.key === "Escape") close();
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [open, close]);
+
   return (
     <AnimatePresence>
       {visible && open && result && level && (
         <motion.div className="fixed inset-0 z-50 grid place-items-center p-4" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}>
           <div className="absolute inset-0 bg-overlay backdrop-blur-sm" onClick={close} />
           <motion.div
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="level-complete-title"
             className="panel relative w-full max-w-md overflow-visible rounded-[2rem] bg-surface p-8 text-center"
             initial={{ scale: 0.7, y: 40, opacity: 0 }}
             animate={{ scale: 1, y: 0, opacity: 1 }}
@@ -82,7 +94,9 @@ export function LevelCompleteDialog() {
               <motion.div className="text-6xl" initial={{ scale: 0, rotate: -30 }} animate={{ scale: 1, rotate: 0 }} transition={{ type: "spring", delay: 0.5 }}>
                 🏆
               </motion.div>
-              <h2 className="mt-3 font-display text-3xl font-semibold text-ink">Level complete!</h2>
+              <h2 id="level-complete-title" className="mt-3 font-display text-3xl font-semibold text-ink">
+                Level complete!
+              </h2>
               <p className="mt-1 text-sm text-ink-3">{level.title}</p>
 
               <div className="mt-6 flex justify-center gap-3">

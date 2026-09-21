@@ -142,7 +142,7 @@ export function CleanZones({ repo, pulse }: { repo: RepoState; pulse: { id: numb
 
   return (
     <>
-      <div ref={containerRef} className="relative grid grid-cols-1 gap-2.5 sm:grid-cols-[1fr_auto_1fr_auto_1fr]">
+      <div ref={containerRef} className="relative grid h-full grid-cols-1 gap-2.5 sm:grid-cols-[1fr_auto_1fr_auto_1fr]">
         <Zone zone="work" count={zones.work.length} empty="empty folder">
           {cards(zones.work)}
         </Zone>
@@ -257,7 +257,8 @@ function Zone({ zone, count, empty, children }: { zone: ZoneId; count: number; e
           {count}
         </motion.span>
       </header>
-      <div className="thin-scroll -mx-1 flex max-h-[138px] min-h-10 flex-col gap-2 overflow-y-auto px-1 pb-1.5 pt-0.5">
+      {/* Capped so a long list doesn't push the board out of the way — unless the reader has dragged this strip taller. */}
+      <div className="thin-scroll -mx-1 flex min-h-10 flex-1 flex-col gap-2 overflow-y-auto px-1 pb-1.5 pt-0.5 [max-height:var(--zone-max,138px)]">
         {children}
         {count === 0 && (
           <div

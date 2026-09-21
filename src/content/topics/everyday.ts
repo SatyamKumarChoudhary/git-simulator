@@ -1,10 +1,10 @@
 import { headCommitId, headTree } from "@/engine";
 import { goals } from "../goals";
-import type { WorldDefinition } from "../types";
+import { defineTopic } from "../registry";
 
 const base = ['echo "<h1>My Site</h1>" > index.html', 'echo "h1 { color: hotpink; }" > style.css', "git init", "git add .", 'git commit -m "First version"'];
 
-export const everydayWorld: WorldDefinition = {
+export const everydayTopic = defineTopic({
   id: "everyday",
   title: "Everyday work",
   emoji: "🔁",
@@ -223,4 +223,4 @@ export const everydayWorld: WorldDefinition = {
       xp: 55,
     },
   ],
-};
+});

@@ -1,5 +1,5 @@
 import { goals } from "../goals";
-import type { WorldDefinition } from "../types";
+import { defineTopic } from "../registry";
 
 const base = ['echo "<h1>My Site</h1>" > index.html', "git init", "git add .", 'git commit -m "First version"'];
 
@@ -17,7 +17,7 @@ const conflictSetup = [
   'git commit -am "Friendly headline"',
 ];
 
-export const mergingWorld: WorldDefinition = {
+export const mergingTopic = defineTopic({
   id: "merging",
   title: "Merging",
   emoji: "🔀",
@@ -346,4 +346,4 @@ export const mergingWorld: WorldDefinition = {
       xp: 75,
     },
   ],
-};
+});

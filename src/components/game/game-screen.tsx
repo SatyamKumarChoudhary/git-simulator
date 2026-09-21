@@ -1,20 +1,22 @@
 "use client";
 
-import { ChevronLeft, ChevronRight, Lock } from "lucide-react";
+import { ChevronLeft, Lock } from "lucide-react";
 import { motion } from "motion/react";
 import Link from "next/link";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { AppearanceToggle } from "@/components/appearance-toggle";
 import { Logo } from "@/components/brand";
 import { CommandStudio } from "@/components/studio/command-studio";
 import { Terminal } from "@/components/terminal/terminal";
 import { ThemeSwitch } from "@/components/visualizer/theme-switch";
 import { Visualizer } from "@/components/visualizer/visualizer";
-import { findLevel, nextLevel, previousLevel } from "@/content";
+import { findLevel, previousLevel } from "@/content";
+import { ResizeHandle, useResizable } from "@/components/ui/resize-handle";
 import { useHydrated } from "@/lib/use-hydrated";
+import { useMediaQuery } from "@/lib/use-media-query";
 import { currentEntry, isUnlocked } from "@/lib/progression";
-import { cn } from "@/lib/utils";
 import { buttonClasses } from "@/components/ui/button";
+import { cn } from "@/lib/utils";
 import { GameStoreContext, type Session, createGameStore, useGame } from "@/store/game-store";
 import { useProgress } from "@/store/progress-store";
 import { LevelCompleteDialog } from "./level-complete-dialog";
@@ -24,11 +26,9 @@ import { SandboxPanel } from "./sandbox-panel";
 export function GameScreen({ session }: { session: Session }) {
   const hydrated = useHydrated();
   const records = useProgress((s) => s.levels);
-  if (session.kind === "level") {
-    // Progress lives in the browser, so wait for it before deciding whether the level is open.
-    if (!hydrated) return <div className="min-h-dvh" />;
-    if (!isUnlocked(session.levelId, records)) return <LockedLevel levelId={session.levelId} />;
-  }
+  // Progress and the saved session both live in the browser: nothing can be decided until it has hydrated.
+  if (!hydrated) return <div className="min-h-dvh" />;
+  if (session.kind === "level" && !isUnlocked(session.levelId, records)) return <LockedLevel levelId={session.levelId} />;
   return <Game session={session} />;
 }
 
@@ -79,20 +79,51 @@ function Game({ session }: { session: Session }) {
 function GameLayout() {
   const level = useGame((s) => s.level);
   const [studioOpen, setStudioOpen] = useState(false);
+  // Panels are only draggable side by side; stacked on a narrow screen they size themselves.
+  const wide = useMediaQuery("(min-width: 1024px)");
+  const mainRef = useRef<HTMLElement>(null);
+  const sideRef = useRef<HTMLDivElement>(null);
+  const briefRef = useRef<HTMLDivElement>(null);
+
+  const side = useResizable({
+    id: "game.side",
+    label: "Width of the question and terminal column",
+    axis: "x",
+    min: 300,
+    maxRatio: 0.62,
+    paneRef: sideRef,
+    containerRef: mainRef,
+  });
+  const brief = useResizable({
+    id: "game.brief",
+    label: level ? "Height of the question panel" : "Height of the sandbox panel",
+    axis: "y",
+    min: 120,
+    maxRatio: 0.78,
+    paneRef: briefRef,
+    containerRef: sideRef,
+  });
+
+  const briefSize = wide && brief.size !== null ? { height: brief.size } : undefined;
 
   return (
     <div className="flex min-h-dvh flex-col lg:h-dvh">
       <TopBar />
-      <main className="grid min-h-0 flex-1 grid-cols-1 gap-3 px-3 pb-3 lg:grid-cols-[minmax(340px,400px)_1fr]">
-        <div className="flex min-h-0 flex-col gap-3">
-          {level ? (
-            <MissionPanel className="lg:max-h-[66%] lg:shrink-0" />
-          ) : (
-            <SandboxPanel className="lg:max-h-[48%] lg:shrink-0" onOpenStudio={() => setStudioOpen(true)} />
-          )}
-          <Terminal className="h-[420px] lg:h-auto lg:flex-1" />
+      <main ref={mainRef} className="flex min-h-0 flex-1 flex-col gap-3 px-3 pb-3 lg:flex-row lg:gap-0">
+        {/* The column takes a share of the screen rather than a fixed width: roomy on a big monitor, sensible on a small one. */}
+        <div
+          ref={sideRef}
+          className="flex min-h-0 flex-col gap-3 lg:w-[clamp(380px,36%,700px)] lg:shrink-0 lg:gap-0"
+          style={wide && side.size !== null ? { width: side.size } : undefined}
+        >
+          <div ref={briefRef} className={cn("flex min-h-0 flex-col lg:shrink-0", brief.size === null && (level ? "lg:min-h-[55%] lg:max-h-[66%]" : "lg:min-h-[44%] lg:max-h-[56%]"))} style={briefSize}>
+            {level ? <MissionPanel className="min-h-0 flex-1" /> : <SandboxPanel className="min-h-0 flex-1" onOpenStudio={() => setStudioOpen(true)} />}
+          </div>
+          <ResizeHandle {...brief.handle} className="hidden lg:flex" />
+          <Terminal className="h-[420px] lg:h-auto lg:min-h-0 lg:flex-1" />
         </div>
-        <div className="min-h-[640px] lg:min-h-0">
+        <ResizeHandle {...side.handle} className="hidden lg:flex" />
+        <div className="min-h-[640px] lg:min-h-0 lg:flex-1">
           <Visualizer />
         </div>
       </main>
@@ -103,46 +134,19 @@ function GameLayout() {
 }
 
 function TopBar() {
-  const level = useGame((s) => s.level);
-  const hydrated = useHydrated();
-  const records = useProgress((s) => s.levels);
-  const entry = level ? findLevel(level.id) : undefined;
-  const prev = level ? previousLevel(level.id) : undefined;
-  const next = level ? nextLevel(level.id) : undefined;
-
   return (
-    <header className="flex flex-wrap items-center gap-4 px-4 py-2.5">
+    <header className="flex flex-wrap items-center gap-2.5 px-4 py-2.5">
+      {/* Back sits on the leading edge, the way every app puts it; the brand follows it. */}
+      <Link
+        href="/"
+        title="Back to the map"
+        className="flex items-center gap-1.5 rounded-xl border border-line bg-surface py-1.5 pl-2 pr-3 text-[12.5px] font-medium text-ink-2 shadow-[0_1px_2px_rgb(15_23_42_/_0.06)] transition-colors hover:border-line-strong hover:text-ink"
+      >
+        <ChevronLeft className="size-4" aria-hidden />
+        Back
+      </Link>
+      <span className="h-5 w-px bg-line" aria-hidden />
       <Logo />
-      {entry && (
-        <nav className="flex items-center gap-1">
-          <NavArrow href={prev ? `/play/${prev.level.id}` : null} label="Previous level" direction="left" />
-          <div className="hidden items-center sm:flex">
-            {entry.world.levels.map((worldLevel, i) => {
-              const done = hydrated && Boolean(records[worldLevel.id]);
-              const current = worldLevel.id === entry.level.id;
-              const open = hydrated && isUnlocked(worldLevel.id, records);
-              const dot = (
-                <span
-                  className={cn(
-                    "block h-1.5 rounded-full transition-all",
-                    current ? "w-5 bg-ink-2" : done ? "w-1.5 bg-emerald-500" : open ? "w-1.5 bg-ink-4 hover:bg-ink-3" : "w-1.5 bg-line-strong",
-                  )}
-                />
-              );
-              return open ? (
-                <Link key={worldLevel.id} href={`/play/${worldLevel.id}`} title={`${i + 1}. ${worldLevel.title}`} className="grid h-6 place-items-center px-1">
-                  {dot}
-                </Link>
-              ) : (
-                <span key={worldLevel.id} title={`${worldLevel.title} (locked)`} className="grid h-6 place-items-center px-1">
-                  {dot}
-                </span>
-              );
-            })}
-          </div>
-          <NavArrow href={next && hydrated && isUnlocked(next.level.id, records) ? `/play/${next.level.id}` : null} label="Next level" direction="right" />
-        </nav>
-      )}
       <div className="ml-auto flex items-center gap-0.5 text-[12px]">
         <ThemeSwitch />
         <AppearanceToggle />
@@ -151,18 +155,3 @@ function TopBar() {
   );
 }
 
-function NavArrow({ href, label, direction }: { href: string | null; label: string; direction: "left" | "right" }) {
-  const Icon = direction === "left" ? ChevronLeft : ChevronRight;
-  if (!href) {
-    return (
-      <span className="grid size-7 place-items-center rounded-full text-ink-4" aria-hidden>
-        <Icon className="size-4" />
-      </span>
-    );
-  }
-  return (
-    <Link href={href} aria-label={label} className="grid size-7 place-items-center rounded-full text-ink-3 transition hover:bg-surface-3 hover:text-ink">
-      <Icon className="size-4" />
-    </Link>
-  );
-}
