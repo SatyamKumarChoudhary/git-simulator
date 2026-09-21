@@ -19,7 +19,8 @@
 }
 
 /*
- * Appearance tokens. Light is the default; [data-theme="dark"] on <html> switches.
+ * Appearance tokens. :root holds the light values, and [data-theme="dark"] on <html> overrides them.
+ * Dark is what ships by default, so <html> carries data-theme="dark" unless a reader has chosen light.
  * Components use the semantic colours below (bg-surface, text-ink, border-line…).
  */
 :root {

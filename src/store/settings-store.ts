@@ -25,7 +25,7 @@ export const useSettings = create<SettingsState>()(
   persist(
     (set) => ({
       theme: DEFAULT_THEME,
-      appearance: "light",
+      appearance: "dark",
       muted: false,
       setTheme: (theme) => set({ theme }),
       setAppearance: (appearance) => {
@@ -37,8 +37,8 @@ export const useSettings = create<SettingsState>()(
     {
       name: "gitquest-settings",
       version: 3,
-      // Earlier versions defaulted to playful views and a dark look; start everyone on the clean, light view.
-      migrate: (persisted) => ({ ...(persisted as SettingsState), theme: DEFAULT_THEME, appearance: "light" }),
+      // Earlier versions defaulted to playful views; start everyone on the clean view and the dark look.
+      migrate: (persisted) => ({ ...(persisted as SettingsState), theme: DEFAULT_THEME, appearance: "dark" }),
     },
   ),
 );

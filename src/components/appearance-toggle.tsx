@@ -11,7 +11,8 @@ export function AppearanceToggle({ className }: { className?: string }) {
   const hydrated = useHydrated();
   const appearance = useSettings((s) => s.appearance);
   const setAppearance = useSettings((s) => s.setAppearance);
-  const dark = hydrated && appearance === "dark";
+  // Dark until proven otherwise: it is the default, so assuming it before hydration keeps the icon from flipping.
+  const dark = !hydrated || appearance === "dark";
 
   return (
     <button

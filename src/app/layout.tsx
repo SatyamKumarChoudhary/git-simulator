@@ -14,15 +14,15 @@ export const metadata: Metadata = {
 };
 
 export const viewport: Viewport = {
-  themeColor: "#f4f6fb",
+  themeColor: "#05060f",
 };
 
-/** Applies the saved appearance before first paint, so dark-mode users never see a light flash. */
-const APPEARANCE_SCRIPT = `try{var s=JSON.parse(localStorage.getItem("gitquest-settings")||"{}");if(s.state&&s.state.appearance==="dark")document.documentElement.dataset.theme="dark"}catch(e){}`;
+/** Applies the saved appearance before first paint, so light-mode users never see a dark flash. */
+const APPEARANCE_SCRIPT = `try{var s=JSON.parse(localStorage.getItem("gitquest-settings")||"{}");if(s.state&&s.state.appearance==="light")document.documentElement.dataset.theme="light"}catch(e){}`;
 
 export default function RootLayout({ children }: LayoutProps<"/">) {
   return (
-    <html lang="en" data-theme="light" suppressHydrationWarning className={`${nunito.variable} ${fredoka.variable} ${jetbrains.variable} h-full antialiased`}>
+    <html lang="en" data-theme="dark" suppressHydrationWarning className={`${nunito.variable} ${fredoka.variable} ${jetbrains.variable} h-full antialiased`}>
       <head>
         <script dangerouslySetInnerHTML={{ __html: APPEARANCE_SCRIPT }} />
       </head>
